@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brain Boost V2</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════
+   VARIABLES & RESET
+══════════════════════════════════════════ */
+:root {
+  --bg:     #05080f;
+  --panel:  rgba(10,20,40,0.88);
+  --accent: #00e5ff;
+  --accent2:#ff2d78;
+  --gold:   #ffd700;
+  --text:   #e0f0ff;
+  --muted:  #5a7a9a;
+  --correct:#00ff88;
+  --wrong:  #ff3355;
+  --locked: rgba(90,122,154,0.25);
+  --glow:   0 0 20px var(--accent), 0 0 60px rgba(0,229,255,0.3);
+  --glow2:  0 0 20px var(--accent2),0 0 60px rgba(255,45,120,0.3);
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:'Exo 2',sans-serif;
+  background:var(--bg); color:var(--text);
+  min-height:100vh; overflow-x:hidden;
+}
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(0,100,255,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(255,0,100,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(0,200,255,0.06) 0%, transparent 50%);
+}
+canvas#stars { position:fixed; inset:0; z-index:0; opacity:.5; }
+
+/* ── SCREENS ── */
+.screen {
+  position:fixed; inset:0; z-index:10; padding:20px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  transition:opacity .5s, transform .5s;
+}
+.screen.hidden { opacity:0; pointer-events:none; transform:scale(.96); }
+
+/* ── LOADING OVERLAY ── */
+#loadingOverlay {
+  position:fixed; inset:0; z-index:400;
+  background:rgba(5,8,15,.92); backdrop-filter:blur(6px);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+}
+#loadingOverlay.hidden { display:none; }
+.spinner {
+  width:52px; height:52px;
+  border:3px solid rgba(0,229,255,.15); border-top-color:var(--accent);
+  border-radius:50%; animation:spin .8s linear infinite;
+}
+@keyframes spin { to{ transform:rotate(360deg); } }
+.loading-text {
+  font-family:'Orbitron',sans-serif; font-size:.8rem;
+  letter-spacing:3px; color:var(--accent);
+}
+
+/* ── TOAST ── */
+#toast {
+  position:fixed; bottom:30px; left:50%;
+  transform:translateX(-50%) translateY(90px);
+  z-index:500; padding:14px 28px;
+  background:rgba(8,16,36,.97); border-radius:14px;
+  font-size:.9rem; letter-spacing:1px;
+  transition:transform .4s cubic-bezier(.34,1.56,.64,1);
+  backdrop-filter:blur(20px); white-space:nowrap;
+  border:1px solid rgba(0,229,255,.25);
+}
+#toast.show  { transform:translateX(-50%) translateY(0); }
+#toast.error   { border-color:var(--wrong);  color:var(--wrong);  }
+#toast.success { border-color:var(--correct);color:var(--correct);}
+#toast.info    { border-color:var(--accent); color:var(--accent); }
+
+/* ── ANIMATIONS ── */
+@keyframes pulse-logo {
+  0%,100%{ filter:drop-shadow(0 0 20px var(--accent)); }
+  50%    { filter:drop-shadow(0 0 40px var(--accent2)); }
+}
+@keyframes float {
+  0%,100%{ transform:translateY(0); }
+  50%    { transform:translateY(-15px); }
+}
+@keyframes fadeUp {
+  from{ opacity:0; transform:translateY(14px); }
+  to  { opacity:1; transform:translateY(0); }
+}
+@keyframes glow-pulse {
+  0%,100%{ box-shadow:0 0 16px rgba(0,255,136,.2); }
+  50%    { box-shadow:0 0 44px rgba(0,255,136,.55); }
+}
+@keyframes gold-pulse {
+  0%,100%{ box-shadow:0 0 16px rgba(255,215,0,.2); }
+  50%    { box-shadow:0 0 44px rgba(255,215,0,.5); }
+}
+
+/* ── BACK BTN ── */
+.back-btn {
+  position:fixed; top:18px; left:18px; z-index:100;
+  background:rgba(10,20,40,.75); border:1px solid rgba(0,229,255,.2);
+  border-radius:10px; padding:10px 18px; cursor:pointer; display:none;
+  font-family:'Orbitron',sans-serif; font-size:.72rem;
+  color:var(--accent); letter-spacing:2px;
+  transition:all .3s; backdrop-filter:blur(12px);
+}
+.back-btn:hover { border-color:var(--accent); box-shadow:var(--glow); }
+
+/* ── USER BAR ── */
+.user-bar {
+  position:fixed; top:18px; right:18px; z-index:100;
+  display:none; align-items:center; gap:10px;
+}
+.user-bar.show { display:flex; }
+.user-pill {
+  background:rgba(10,20,40,.85); border:1px solid rgba(0,229,255,.2);
+  border-radius:30px; padding:8px 18px;
+  font-family:'Orbitron',sans-serif; font-size:.75rem;
+  color:var(--accent); letter-spacing:1px; backdrop-filter:blur(12px);
+}
+.logout-btn {
+  background:rgba(255,45,120,.08); border:1px solid rgba(255,45,120,.3);
+  border-radius:8px; padding:8px 14px; cursor:pointer;
+  font-family:'Orbitron',sans-serif; font-size:.72rem;
+  color:var(--accent2); letter-spacing:1px; transition:all .3s; backdrop-filter:blur(12px);
+}
+.logout-btn:hover { box-shadow:var(--glow2); }
+
+/* ── BOTTOM NAV ── */
+.nav-bottom {
+  position:fixed; bottom:0; left:0; right:0; z-index:50;
+  display:none; align-items:center; justify-content:center; gap:6px;
+  background:rgba(5,8,15,.94); padding:10px 20px;
+  border-top:1px solid rgba(0,229,255,.1); backdrop-filter:blur(20px);
+}
+.nav-bottom.show { display:flex; }
+.nav-btn {
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding:8px 24px; cursor:pointer; border:none; background:transparent;
+  font-family:'Orbitron',sans-serif; font-size:.58rem; letter-spacing:1px;
+  color:var(--muted); transition:color .3s; border-radius:10px;
+}
+.nav-btn .ni { font-size:1.3rem; }
+.nav-btn.active,.nav-btn:hover { color:var(--accent); }
+
+/* ══════════════════════════════════════════
+   SPLASH
+══════════════════════════════════════════ */
+#splash { gap:22px; }
+.logo {
+  font-family:'Orbitron',sans-serif;
+  font-size:clamp(3rem,10vw,6rem); font-weight:900; letter-spacing:4px;
+  background:linear-gradient(135deg,var(--accent),#fff,var(--accent2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  animation:pulse-logo 2s ease-in-out infinite; text-align:center;
+}
+.tagline { color:var(--muted); font-size:1rem; letter-spacing:6px; font-weight:300; }
+.brain-icon {
+  font-size:5rem; animation:float 3s ease-in-out infinite;
+  filter:drop-shadow(0 0 20px var(--accent));
+}
+
+/* ══════════════════════════════════════════
+   LOGIN / REGISTER CARD
+══════════════════════════════════════════ */
+.card {
+  background:var(--panel); border:1px solid rgba(0,229,255,.2);
+  border-radius:22px; padding:42px; width:min(420px,95vw);
+  backdrop-filter:blur(22px);
+  box-shadow:0 0 44px rgba(0,229,255,.1), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.card h2 {
+  font-family:'Orbitron',sans-serif; font-size:1.55rem;
+  color:var(--accent); text-align:center; margin-bottom:6px;
+}
+.card .subtitle {
+  text-align:center; color:var(--muted);
+  font-size:.82rem; margin-bottom:26px; letter-spacing:2px;
+}
+.auth-tabs {
+  display:flex; margin-bottom:22px;
+  border-radius:10px; overflow:hidden; border:1px solid rgba(0,229,255,.2);
+}
+.auth-tab {
+  flex:1; padding:11px; text-align:center; cursor:pointer;
+  font-family:'Orbitron',sans-serif; font-size:.73rem; letter-spacing:2px;
+  color:var(--muted); background:transparent; border:none; transition:all .3s;
+}
+.auth-tab.active { background:rgba(0,229,255,.13); color:var(--accent); }
+
+input[type="text"],input[type="password"],input[type="email"] {
+  width:100%; background:rgba(0,229,255,.05);
+  border:1px solid rgba(0,229,255,.28); border-radius:10px;
+  padding:14px 18px; color:var(--text);
+  font-family:'Exo 2',sans-serif; font-size:1rem; outline:none;
+  transition:border-color .3s, box-shadow .3s; margin-bottom:14px;
+}
+input:focus { border-color:var(--accent); box-shadow:0 0 16px rgba(0,229,255,.2); }
+input::placeholder { color:var(--muted); }
+
+/* ── BUTTONS ── */
+.btn {
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  background:linear-gradient(135deg,var(--accent),#0099bb);
+  color:#000; font-family:'Orbitron',sans-serif; font-size:.88rem;
+  font-weight:700; letter-spacing:2px; padding:14px 30px;
+  border:none; border-radius:10px; cursor:pointer; width:100%;
+  transition:transform .2s, box-shadow .2s; text-transform:uppercase;
+}
+.btn:hover  { transform:translateY(-2px); box-shadow:var(--glow); }
+.btn:active { transform:translateY(0); }
+.btn.secondary {
+  background:rgba(0,229,255,.1); color:var(--accent);
+  border:1px solid rgba(0,229,255,.3);
+}
+.btn.secondary:hover { box-shadow:var(--glow); }
+.btn.danger  { background:linear-gradient(135deg,#ff2d78,#cc0044); color:#fff; }
+.btn.psycho  { background:linear-gradient(135deg,#a855f7,#7c3aed); color:#fff; }
+.btn.psycho:hover { box-shadow:0 0 22px rgba(168,85,247,.55); }
+
+/* ══════════════════════════════════════════
+   SECTIONS
+══════════════════════════════════════════ */
+.page-title {
+  font-family:'Orbitron',sans-serif;
+  font-size:clamp(1.2rem,4vw,2rem); font-weight:700;
+  color:var(--accent); margin-bottom:22px; letter-spacing:3px; text-align:center;
+}
+.section-header { margin-bottom:18px; text-align:center; }
+.section-header p { color:var(--muted); font-size:.85rem; letter-spacing:2px; }
+
+.sections-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  gap:16px; width:min(980px,95vw);
+  max-height:78vh; overflow-y:auto; padding:4px;
+}
+.sections-grid::-webkit-scrollbar { width:4px; }
+.sections-grid::-webkit-scrollbar-thumb { background:var(--accent); border-radius:2px; }
+
+.section-card {
+  background:var(--panel); border:1px solid rgba(0,229,255,.15);
+  border-radius:16px; padding:22px; cursor:pointer;
+  transition:transform .3s, border-color .3s, box-shadow .3s;
+  backdrop-filter:blur(12px);
+  display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center;
+}
+.section-card:hover {
+  transform:translateY(-5px); border-color:var(--accent); box-shadow:var(--glow);
+}
+.section-card.psycho-card { border-color:rgba(168,85,247,.4); }
+.section-card.psycho-card:hover { border-color:#a855f7; box-shadow:0 0 22px rgba(168,85,247,.45); }
+
+.sec-img {
+  width:100%; height:110px; border-radius:10px;
+  background:rgba(0,229,255,.05); border:2px dashed rgba(0,229,255,.22);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:6px; overflow:hidden; transition:border-color .3s;
+}
+.section-card:hover .sec-img { border-color:rgba(0,229,255,.5); }
+.sec-img img { width:100%; height:100%; object-fit:cover; border-radius:8px; }
+.sec-icon { font-size:2rem; opacity:.6; }
+.sec-label {
+  font-family:'Orbitron',sans-serif; font-size:.58rem;
+  color:var(--muted); letter-spacing:2px;
+}
+.section-card h3 {
+  font-family:'Orbitron',sans-serif; font-size:.83rem;
+  letter-spacing:2px; color:var(--accent);
+}
+.psycho-card h3 { color:#a855f7; }
+.section-card p  { font-size:.76rem; color:var(--muted); }
+.sec-info        { font-size:.7rem;  color:var(--muted); }
+
+/* ══════════════════════════════════════════
+   LEVELS
+══════════════════════════════════════════ */
+.levels-container {
+  display:flex; flex-direction:column; gap:12px;
+  width:min(500px,95vw); max-height:72vh; overflow-y:auto;
+}
+.level-btn {
+  background:var(--panel); border:1px solid rgba(0,229,255,.2);
+  border-radius:13px; padding:18px 24px;
+  display:flex; align-items:center; gap:16px;
+  cursor:pointer; transition:all .3s; backdrop-filter:blur(12px);
+}
+.level-btn:hover:not(.locked) {
+  border-color:var(--accent); box-shadow:var(--glow); transform:translateX(6px);
+}
+.level-btn.locked {
+  cursor:not-allowed; opacity:.48;
+  background:var(--locked); border-color:rgba(90,122,154,.18);
+}
+.level-btn.completed { border-color:rgba(0,255,136,.45); }
+.lv-num {
+  font-family:'Orbitron',sans-serif; font-size:1.5rem;
+  font-weight:900; color:var(--accent); min-width:44px; text-align:center;
+}
+.level-btn.locked    .lv-num { color:var(--muted); }
+.level-btn.completed .lv-num { color:var(--correct); }
+.lv-info h4 { font-weight:600; font-size:1rem; }
+.lv-info p  { font-size:.78rem; color:var(--muted); margin-top:2px; }
+.lv-stars   { margin-left:auto; font-size:.88rem; color:var(--gold); }
+
+/* ══════════════════════════════════════════
+   QUIZ
+══════════════════════════════════════════ */
+#quiz { padding:20px; }
+.quiz-header {
+  display:flex; align-items:center; justify-content:space-between;
+  width:min(700px,95vw); margin-bottom:18px; gap:12px; flex-wrap:wrap;
+}
+.quiz-meta {
+  font-family:'Orbitron',sans-serif; font-size:.78rem;
+  color:var(--muted); letter-spacing:2px;
+}
+.quiz-meta span { color:var(--accent); }
+
+/* Timer ring */
+.timer-ring { position:relative; width:70px; height:70px; flex-shrink:0; }
+.timer-ring svg { transform:rotate(-90deg); position:absolute; inset:0; }
+.timer-ring circle { fill:none; stroke-width:4; }
+.timer-ring .bg  { stroke:rgba(0,229,255,.1); }
+.timer-ring .fg  { stroke:var(--accent); stroke-linecap:round; transition:stroke-dashoffset 1s linear, stroke .3s; }
+.timer-num {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-family:'Orbitron',sans-serif; font-size:1.1rem; font-weight:700; color:var(--accent);
+}
+
+/* Progress bar */
+.progress-bar {
+  width:min(700px,95vw); height:4px;
+  background:rgba(0,229,255,.1); border-radius:2px; margin-bottom:18px; overflow:hidden;
+}
+.progress-fill {
+  height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2));
+  border-radius:2px; transition:width .5s ease;
+}
+
+/* Question */
+.question-card {
+  background:var(--panel); border:1px solid rgba(0,229,255,.2);
+  border-radius:20px; padding:32px; width:min(700px,95vw);
+  backdrop-filter:blur(20px); margin-bottom:18px;
+}
+.question-num {
+  font-family:'Orbitron',sans-serif; font-size:.73rem;
+  color:var(--muted); letter-spacing:3px; margin-bottom:12px;
+}
+.question-text { font-size:1.15rem; font-weight:400; line-height:1.65; color:var(--text); }
+
+/* Options */
+.options-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; width:min(700px,95vw); }
+@media(max-width:500px){ .options-grid{ grid-template-columns:1fr; } }
+
+.option-btn {
+  background:rgba(10,20,40,.72); border:1px solid rgba(0,229,255,.2);
+  border-radius:14px; padding:16px 20px; cursor:pointer; transition:all .25s;
+  display:flex; align-items:center; gap:12px; text-align:left;
+  color:var(--text); font-family:'Exo 2',sans-serif; font-size:.93rem;
+  backdrop-filter:blur(10px);
+}
+.option-btn:hover:not(:disabled) {
+  border-color:var(--accent); box-shadow:var(--glow); transform:translateY(-2px);
+}
+.opt-letter {
+  font-family:'Orbitron',sans-serif; font-size:.78rem; font-weight:700;
+  color:var(--accent); min-width:26px; height:26px;
+  border:1px solid rgba(0,229,255,.4); border-radius:6px;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.option-btn.correct {
+  border-color:var(--correct); background:rgba(0,255,136,.1);
+  box-shadow:0 0 22px rgba(0,255,136,.25);
+}
+.option-btn.correct .opt-letter { border-color:var(--correct); color:var(--correct); }
+.option-btn.wrong {
+  border-color:var(--wrong); background:rgba(255,51,85,.1);
+  box-shadow:0 0 22px rgba(255,51,85,.25);
+}
+.option-btn.wrong .opt-letter { border-color:var(--wrong); color:var(--wrong); }
+.option-btn.selected-neutral {
+  border-color:rgba(0,229,255,.65); background:rgba(0,229,255,.06);
+}
+
+/* Feedback */
+.feedback-msg {
+  width:min(700px,95vw); padding:16px 22px; border-radius:12px;
+  font-size:.93rem; font-weight:600; letter-spacing:1px; text-align:center;
+  margin-top:10px; display:none; animation:fadeUp .4s ease;
+}
+.feedback-msg.ok  { background:rgba(0,255,136,.1);  border:1px solid var(--correct); color:var(--correct); }
+.feedback-msg.bad { background:rgba(255,51,85,.1);  border:1px solid var(--wrong);  color:var(--wrong);  }
+.feedback-msg.neu { background:rgba(0,229,255,.07); border:1px solid rgba(0,229,255,.3); color:var(--accent); }
+
+/* ══════════════════════════════════════════
+   RESULT
+══════════════════════════════════════════ */
+#result { text-align:center; }
+#resultInner {
+  display:flex; flex-direction:column; align-items:center; gap:16px;
+  max-width:500px; width:95vw;
+  max-height:90vh; overflow-y:auto; padding:12px 4px;
+}
+.score-big {
+  font-family:'Orbitron',sans-serif;
+  font-size:clamp(3rem,12vw,6rem); font-weight:900;
+  background:linear-gradient(135deg,var(--accent),var(--gold));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+.score-label { color:var(--muted); font-size:.83rem; letter-spacing:4px; text-transform:uppercase; }
+.result-actions { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-top:6px; }
+.result-actions .btn { width:auto; min-width:150px; }
+
+.try-again-box {
+  background:rgba(255,51,85,.1); border:1px solid var(--wrong);
+  border-radius:16px; padding:24px 30px; max-width:420px; text-align:center;
+}
+.try-again-box h3 {
+  font-family:'Orbitron',sans-serif; color:var(--wrong);
+  font-size:1.1rem; letter-spacing:2px; margin-bottom:10px;
+}
+.try-again-box p { color:var(--muted); font-size:.88rem; line-height:1.6; }
+
+.perfect-box {
+  background:rgba(0,255,136,.08); border:1px solid var(--correct);
+  border-radius:16px; padding:24px 30px; max-width:420px;
+  text-align:center; animation:glow-pulse 2s ease-in-out infinite;
+}
+.perfect-box h3 {
+  font-family:'Orbitron',sans-serif; color:var(--correct);
+  font-size:1.2rem; letter-spacing:2px; margin-bottom:10px;
+}
+.perfect-box p { color:var(--text); font-size:.93rem; line-height:1.6; }
+
+/* answer review grid on result */
+.review-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:8px;
+  width:100%; max-width:460px;
+}
+@media(max-width:480px){ .review-grid{ grid-template-columns:1fr; } }
+.review-item {
+  display:flex; align-items:center; gap:8px;
+  background:rgba(255,255,255,.03); border-radius:8px;
+  padding:8px 12px; font-size:.8rem; border:1px solid transparent;
+}
+.review-item.rv-correct { border-color:rgba(0,255,136,.3); color:var(--correct); }
+.review-item.rv-wrong   { border-color:rgba(255,51,85,.3);  color:var(--wrong);  }
+.review-item.rv-timeout { border-color:rgba(90,122,154,.3);  color:var(--muted);  }
+.rv-dot { font-size:1rem; flex-shrink:0; }
+
+/* ══════════════════════════════════════════
+   PSYCHOMETRIC
+══════════════════════════════════════════ */
+#psychometric { overflow-y:auto; padding:30px 20px; }
+.psycho-header { text-align:center; margin-bottom:26px; }
+.psycho-header h1 {
+  font-family:'Orbitron',sans-serif;
+  font-size:clamp(1.3rem,4vw,2rem); color:#a855f7; letter-spacing:3px;
+}
+.psycho-header p {
+  color:var(--muted); margin-top:8px;
+  font-size:.88rem; max-width:500px; line-height:1.65;
+}
+.psycho-prog-wrap { width:min(620px,95vw); margin:0 auto 26px; }
+.psycho-q-label {
+  font-family:'Orbitron',sans-serif; font-size:.7rem;
+  color:var(--muted); letter-spacing:2px; margin-bottom:8px;
+}
+.psycho-prog-bar { height:6px; background:rgba(168,85,247,.15); border-radius:3px; overflow:hidden; }
+.psycho-prog-fill {
+  height:100%; background:linear-gradient(90deg,#a855f7,#ec4899);
+  border-radius:3px; transition:width .5s ease;
+}
+.psycho-q-card {
+  background:var(--panel); border:1px solid rgba(168,85,247,.22);
+  border-radius:20px; padding:32px; width:min(620px,95vw);
+  backdrop-filter:blur(20px); margin:0 auto 20px;
+}
+.psycho-q-card h3 { font-size:1.1rem; line-height:1.7; color:var(--text); margin-bottom:20px; }
+
+.psycho-opt {
+  background:rgba(10,20,40,.72); border:1px solid rgba(168,85,247,.22);
+  border-radius:14px; padding:18px 22px; cursor:pointer; transition:all .25s;
+  display:flex; align-items:center; gap:14px;
+  color:var(--text); font-family:'Exo 2',sans-serif; font-size:1rem;
+  backdrop-filter:blur(10px); width:100%; margin-bottom:10px;
+}
+.psycho-opt:hover { border-color:#a855f7; box-shadow:0 0 20px rgba(168,85,247,.3); transform:translateX(5px); }
+.psycho-opt.selected { border-color:#a855f7; background:rgba(168,85,247,.16); }
+.psycho-opt:disabled { pointer-events:none; }
+.psycho-letter {
+  font-family:'Orbitron',sans-serif; font-size:.78rem; font-weight:700;
+  color:#a855f7; min-width:28px; height:28px;
+  border:1px solid rgba(168,85,247,.5); border-radius:6px;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+
+/* ══════════════════════════════════════════
+   CAREER RESULT
+══════════════════════════════════════════ */
+#careerResult { overflow-y:auto; padding:30px 20px; }
+.career-card {
+  background:var(--panel); border:1px solid rgba(168,85,247,.35);
+  border-radius:24px; padding:40px; width:min(660px,95vw);
+  backdrop-filter:blur(22px); text-align:center;
+  box-shadow:0 0 60px rgba(168,85,247,.18); animation:fadeUp .6s ease;
+}
+.career-badge   { font-size:5rem; margin-bottom:16px; animation:float 3s ease-in-out infinite; }
+.career-title   { font-family:'Orbitron',sans-serif; font-size:clamp(1.3rem,4vw,1.8rem); color:#a855f7; letter-spacing:3px; margin-bottom:8px; }
+.career-type    { font-size:.83rem; color:var(--muted); letter-spacing:4px; margin-bottom:24px; text-transform:uppercase; }
+.career-desc    { font-size:1rem; line-height:1.8; color:var(--text); margin-bottom:28px; max-width:500px; margin-left:auto; margin-right:auto; }
+.career-paths   { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-bottom:28px; }
+.career-path-tag { background:rgba(168,85,247,.12); border:1px solid rgba(168,85,247,.35); border-radius:30px; padding:8px 18px; font-size:.8rem; color:#c084fc; letter-spacing:1px; }
+.career-strengths{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-bottom:28px; }
+.strength-tag    { background:rgba(0,229,255,.08); border:1px solid rgba(0,229,255,.25); border-radius:20px; padding:6px 14px; font-size:.76rem; color:var(--accent); letter-spacing:1px; }
+.career-sec-hint { font-size:.83rem; color:var(--muted); margin-bottom:14px; line-height:1.6; }
+.rec-sections    { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-bottom:28px; }
+.rec-sec-tag     { background:rgba(255,215,0,.08); border:1px solid rgba(255,215,0,.3); border-radius:20px; padding:8px 16px; font-size:.78rem; color:var(--gold); letter-spacing:1px; }
+.c-divider       { width:100%; height:1px; background:rgba(168,85,247,.15); margin:20px 0; }
+.career-actions  { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+.career-actions .btn { width:auto; min-width:180px; }
+
+/* ══════════════════════════════════════════
+   LEADERBOARD
+══════════════════════════════════════════ */
+#leaderboard { overflow-y:auto; padding:20px; }
+.lb-tabs {
+  display:flex; gap:8px; margin-bottom:20px;
+  flex-wrap:wrap; justify-content:center;
+  max-width:700px; width:95vw;
+}
+.lb-tab {
+  background:rgba(0,229,255,.05); border:1px solid rgba(0,229,255,.2);
+  border-radius:20px; padding:7px 16px; cursor:pointer;
+  font-size:.72rem; font-family:'Orbitron',sans-serif;
+  letter-spacing:1px; color:var(--muted); transition:all .3s;
+}
+.lb-tab.active { background:rgba(0,229,255,.15); border-color:var(--accent); color:var(--accent); }
+.lb-table { width:min(660px,95vw); border-collapse:collapse; }
+.lb-table th {
+  font-family:'Orbitron',sans-serif; font-size:.68rem; letter-spacing:2px;
+  color:var(--muted); padding:10px 16px; text-align:left;
+  border-bottom:1px solid rgba(0,229,255,.15);
+}
+.lb-table td { padding:12px 16px; font-size:.9rem; border-bottom:1px solid rgba(0,229,255,.06); }
+.lb-table tr:hover td { background:rgba(0,229,255,.04); }
+.lb-rank { font-family:'Orbitron',sans-serif; font-weight:700; color:var(--muted); }
+.lb-rank.r1 { color:var(--gold); }
+.lb-rank.r2 { color:#c0c0c0; }
+.lb-rank.r3 { color:#cd7f32; }
+.lb-me      { background:rgba(0,229,255,.05) !important; }
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+
+<!-- Loading overlay -->
+<div id="loadingOverlay" class="hidden">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadTxt">LOADING…</div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- User bar -->
+<div class="user-bar" id="userBar">
+  <div class="user-pill" id="userPill">👤</div>
+  <button class="logout-btn" onclick="doLogout()">LOGOUT</button>
+</div>
+
+<!-- Back button -->
+<button class="back-btn" id="backBtn">← BACK</button>
+
+<!-- Bottom nav -->
+<div class="nav-bottom" id="navBar">
+  <button class="nav-btn active" id="navPlay" onclick="navGo('sections')">
+    <span class="ni">🎮</span>PLAY
+  </button>
+  <button class="nav-btn" id="navLb" onclick="navGo('leaderboard')">
+    <span class="ni">🏆</span>RANKS
+  </button>
+</div>
+
+<!-- ════ SPLASH ════ -->
+<div class="screen" id="splash">
+  <div class="brain-icon">🧠</div>
+  <div class="logo">BRAIN BOOST</div>
+  <div class="tagline">Challenge Your Mind</div>
+</div>
+
+<!-- ════ LOGIN ════ -->
+<div class="screen hidden" id="login">
+  <div class="card">
+    <h2>BRAIN BOOST</h2>
+    <div class="subtitle">V2 — BACKEND CONNECTED</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin"    onclick="switchTab('login')">LOGIN</button>
+      <button class="auth-tab"        id="tabRegister" onclick="switchTab('register')">REGISTER</button>
+    </div>
+    <!-- login form -->
+    <div id="loginForm">
+      <input type="text"     id="loginUser" placeholder="Username" autocomplete="username"/>
+      <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password"/>
+      <button class="btn" onclick="doLogin()">START JOURNEY ⚡</button>
+    </div>
+    <!-- register form -->
+    <div id="registerForm" style="display:none">
+      <input type="text"     id="regUser"  placeholder="Choose username"   maxlength="30"/>
+      <input type="email"    id="regEmail" placeholder="Email (optional)"/>
+      <input type="password" id="regPass"  placeholder="Choose password"/>
+      <button class="btn" onclick="doRegister()">CREATE ACCOUNT 🚀</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ SECTIONS ════ -->
+<div class="screen hidden" id="sections">
+  <div class="section-header">
+    <div class="page-title">SELECT CATEGORY</div>
+    <p id="welcomeText" style="color:var(--muted);font-size:.85rem;letter-spacing:2px"></p>
+  </div>
+  <div class="sections-grid" id="sectionsGrid"></div>
+</div>
+
+<!-- ════ LEVELS ════ -->
+<div class="screen hidden" id="levels">
+  <div class="page-title" id="levelsTitle"></div>
+  <div class="levels-container" id="levelsContainer"></div>
+</div>
+
+<!-- ════ QUIZ ════ -->
+<div class="screen hidden" id="quiz">
+  <div class="quiz-header">
+    <div class="quiz-meta" id="quizMeta"></div>
+    <div class="timer-ring">
+      <svg width="70" height="70" viewBox="0 0 70 70">
+        <circle class="bg" cx="35" cy="35" r="30"/>
+        <circle class="fg" id="timerCircle" cx="35" cy="35" r="30"
+                stroke-dasharray="188.5" stroke-dashoffset="0"/>
+      </svg>
+      <div class="timer-num" id="timerNum">15</div>
+    </div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="question-card">
+    <div class="question-num"  id="questionNum"></div>
+    <div class="question-text" id="questionText"></div>
+  </div>
+  <div class="options-grid"  id="optionsGrid"></div>
+  <div class="feedback-msg"  id="feedbackMsg"></div>
+</div>
+
+<!-- ════ RESULT ════ -->
+<div class="screen hidden" id="result">
+  <div id="resultInner"></div>
+</div>
+
+<!-- ════ PSYCHOMETRIC ════ -->
+<div class="screen hidden" id="psychometric">
+  <div class="psycho-header">
+    <h1>🧬 PSYCHOMETRIC TEST</h1>
+    <p>Answer honestly — there are no right or wrong answers.<br>Discover your ideal career path through personality analysis.</p>
+  </div>
+  <div class="psycho-prog-wrap">
+    <div class="psycho-q-label" id="psychoLabel">QUESTION 1 OF 20</div>
+    <div class="psycho-prog-bar">
+      <div class="psycho-prog-fill" id="psychoFill" style="width:0%"></div>
+    </div>
+  </div>
+  <div class="psycho-q-card">
+    <h3 id="psychoQuestion"></h3>
+    <div id="psychoOptions"></div>
+  </div>
+</div>
+
+<!-- ════ CAREER RESULT ════ -->
+<div class="screen hidden" id="careerResult">
+  <div class="career-card" id="careerCard"></div>
+</div>
+
+<!-- ════ LEADERBOARD ════ -->
+<div class="screen hidden" id="leaderboard">
+  <div class="page-title">🏆 LEADERBOARD</div>
+  <div class="lb-tabs" id="lbTabs"></div>
+  <table class="lb-table">
+    <thead>
+      <tr>
+        <th>#</th><th>PLAYER</th>
+        <th>SCORE</th><th>PERFECTS ⭐</th><th>GAMES</th>
+      </tr>
+    </thead>
+    <tbody id="lbBody"></tbody>
+  </table>
+</div>
+
+<script>
+'use strict';
+/* ══════════════════════════════════════════════════════════
+   CONFIG  — adjust port if your Flask server uses a different one
+══════════════════════════════════════════════════════════ */
+const API_BASE = 'http://localhost:5000/api';
+
+/* ══════════════════════════════════════════════════════════
+   STARFIELD
+══════════════════════════════════════════════════════════ */
+(function(){
+  const cv = document.getElementById('stars');
+  const cx = cv.getContext('2d');
+  let stars = [];
+  const init = () => {
+    cv.width  = innerWidth;
+    cv.height = innerHeight;
+    stars = Array.from({length:160}, () => ({
+      x: Math.random()*cv.width, y: Math.random()*cv.height,
+      r: Math.random()*1.5+.4,   op: Math.random()
+    }));
+  };
+  const draw = () => {
+    cx.clearRect(0,0,cv.width,cv.height);
+    stars.forEach(s => {
+      s.op = Math.max(.1, Math.min(.8, s.op + (Math.random()-.5)*.02));
+      cx.beginPath(); cx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      cx.fillStyle = `rgba(180,220,255,${s.op})`; cx.fill();
+    });
+    requestAnimationFrame(draw);
+  };
+  addEventListener('resize', init); init(); draw();
+})();
+
+/* ══════════════════════════════════════════════════════════
+   PSYCHOMETRIC QUESTIONS  (client-side — no right/wrong)
+══════════════════════════════════════════════════════════ */
+const PSYCHO_QS = [
+  {q:"When you have free time, you prefer to:",
+   o:["Read books or research a topic","Fix or build something with your hands","Talk with friends or meet new people","Explore nature or go on adventures"]},
+  {q:"In a group project, you naturally take the role of:",
+   o:["The planner who organises everything","The creative who comes up with ideas","The leader who motivates the team","The analyst who checks for errors"]},
+  {q:"Which subject always fascinated you most in school?",
+   o:["Mathematics and Science","Art and Literature","History and Social Studies","Physical Education and Sports"]},
+  {q:"When you face a problem, you typically:",
+   o:["Research it thoroughly before acting","Trust your gut and try something","Ask others for their opinion","Break it into small logical steps"]},
+  {q:"You feel most accomplished when you:",
+   o:["Solve a complex puzzle or equation","Create something beautiful or meaningful","Help someone overcome a difficulty","Achieve a physical or competitive goal"]},
+  {q:"Your ideal work environment would be:",
+   o:["A quiet lab or office with data and research","A creative studio with freedom to experiment","A dynamic team environment with collaboration","Outdoors or in the field, always moving"]},
+  {q:"Which activity would you enjoy most on a weekend?",
+   o:["Coding a personal project or doing puzzles","Painting, writing, or playing music","Volunteering or organising community events","Playing sports or trekking in nature"]},
+  {q:"When you watch a documentary, which topic grabs you?",
+   o:["Science, technology, or space exploration","Art, history, or culture","Society, law, or politics","Wildlife, environment, or extreme sports"]},
+  {q:"You believe the most important quality in a person is:",
+   o:["Intelligence and analytical thinking","Creativity and originality","Empathy and communication","Courage and determination"]},
+  {q:"When making decisions, you rely more on:",
+   o:["Facts, data, and logic","Intuition and imagination","Others' feelings and consensus","Past experience and instinct"]},
+  {q:"Which career sounds most exciting to you?",
+   o:["Data Scientist or Engineer","Designer, Writer, or Artist","Doctor, Teacher, or Lawyer","Athlete, Explorer, or Military Officer"]},
+  {q:"How do you learn something new best?",
+   o:["By reading and analysing","By creating and experimenting","By discussing with others","By doing it physically"]},
+  {q:"Your biggest strength is:",
+   o:["Logical thinking and precision","Imagination and innovation","People skills and leadership","Physical ability and resilience"]},
+  {q:"Which kind of challenge energises you most?",
+   o:["Cracking a difficult technical problem","Designing something from scratch","Managing people or resolving conflicts","Competing and pushing your limits"]},
+  {q:"When you think about your future, you most want to:",
+   o:["Discover or invent something","Leave a creative legacy","Make a difference in people's lives","Be known for courage or achievement"]},
+  {q:"Which subject would you most like to study further?",
+   o:["Computer Science, Physics, or Finance","Architecture, Fine Arts, or Journalism","Law, Medicine, or Psychology","Sports Science, Defence, or Environmental Studies"]},
+  {q:"You are more:",
+   o:["Introverted and detail-focused","Imaginative and expressive","Extroverted and people-oriented","Active and adventurous"]},
+  {q:"At a career fair, which booth would you visit first?",
+   o:["Tech companies and startups","Design agencies and media houses","NGOs, hospitals, or law firms","Sports academies, defence, or wildlife organisations"]},
+  {q:"Which statement best describes you?",
+   o:["I love understanding how systems work","I express myself through art or words","I care deeply about fairness and people","I live for challenges and pushing limits"]},
+  {q:"If you could master one skill instantly, it would be:",
+   o:["Advanced programming or mathematics","Mastery of a creative art form","Persuasion, leadership, or medical diagnosis","Elite athletic or survival skills"]},
+];
+
+const CAREER_PROFILES = {
+  analytical:{
+    badge:'🔬', title:'THE ANALYTICAL MIND', type:'Logical · Systematic · Data-Driven',
+    desc:"You have a sharp, logical mind that thrives on data, patterns, and problem-solving. You are naturally drawn to understanding how complex systems work, and you have the patience to work through problems methodically. You excel in environments that demand precision and structured thinking.",
+    paths:['Software Engineer','Data Scientist','AI/ML Engineer','Financial Analyst','Civil/Mechanical Engineer','Cybersecurity Expert','Research Scientist','Mathematician','Economist','Chartered Accountant'],
+    strengths:['Critical Thinking','Problem Solving','Attention to Detail','Pattern Recognition','Technical Proficiency'],
+    recommended:['Computer','IKS','Sociopolitical']
+  },
+  creative:{
+    badge:'🎨', title:'THE CREATIVE VISIONARY', type:'Imaginative · Expressive · Innovative',
+    desc:"You see the world through a lens of beauty, meaning, and possibility. Your imagination is your greatest asset — you are constantly generating new ideas, finding unique angles, and expressing complex emotions in original ways. You thrive when given freedom to create and innovate.",
+    paths:['Graphic Designer','UX/UI Designer','Filmmaker','Journalist & Writer','Architect','Fashion Designer','Game Developer','Content Creator','Advertising Professional','Literary Author'],
+    strengths:['Creativity & Innovation','Visual Thinking','Storytelling','Emotional Intelligence','Aesthetic Sense'],
+    recommended:['English','Indian Culture','IKS']
+  },
+  social:{
+    badge:'🌍', title:'THE SOCIAL CHANGEMAKER', type:'Empathetic · Communicative · Leadership',
+    desc:"You are powered by a deep sense of purpose — you want to make a meaningful difference in people's lives and society. Your empathy, communication skills, and natural leadership make you incredibly effective in roles that require collaboration, persuasion, and human connection.",
+    paths:['Doctor / Healthcare Professional','Lawyer & Legal Expert','Teacher & Educator','Social Worker & NGO Leader','Politician & Policy Maker','Psychologist & Counsellor','HR & Organisational Developer','Diplomat & Civil Servant','Journalist & Activist','Public Health Specialist'],
+    strengths:['Empathy','Leadership','Communication','Conflict Resolution','Motivating Others'],
+    recommended:['Sociopolitical','Environment','English']
+  },
+  physical:{
+    badge:'⚡', title:'THE ACTION-ORIENTED ACHIEVER', type:'Resilient · Competitive · Courageous',
+    desc:"You are driven by action, challenge, and achievement. You possess extraordinary determination, physical ability, and a competitive spirit that pushes you beyond ordinary limits. You thrive in high-pressure, dynamic environments where you can test yourself and lead by example.",
+    paths:['Professional Athlete','Military & Defence Officer','Sports Coach & Trainer','Environmental Scientist','Wildlife Conservationist','Adventure Tourism Professional','Physiotherapist','Police & Law Enforcement','Pilot & Aviation Professional','Physical Education Teacher'],
+    strengths:['Physical Endurance','Competitive Drive','Quick Decision Making','Courage & Resilience','Team Leadership'],
+    recommended:['Sports','Environment','Indian Culture']
+  }
+};
+
+const MSG_CORRECT = ['🔥 Blazing!','⚡ Electrifying!','🎯 Spot on!','💡 Brilliant!','🚀 Outstanding!','✨ Perfect!','🌟 On fire!','💪 Unstoppable!'];
+const MSG_WRONG   = ['Keep pushing! 💪','Learn and grow! 🌱','Next one! ⚡','Stay focused! 🎯','Bounce back! 💡','Every mistake teaches! 📚'];
+
+/* ══════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════ */
+let authToken   = localStorage.getItem('bb_token') || '';
+let currentUser = null;
+let sectionsData= [];
+let progressMap = {};   // levelId → progress obj
+
+let Q = {
+  sectionId:   null,
+  sectionName: '',
+  sectionIcon: '',
+  levelId:     null,
+  levelNum:    null,
+  questions:   [],     // [{id, question_text, options:[...], correct_option?}]
+  answers:     [],     // answers collected during quiz
+  idx:         0,
+  score:       0,
+  timer:       null,
+  timerVal:    15,
+  answered:    false,
+  qStart:      0,
+  quizStart:   0,
+};
+let PS = { idx:0, scores:{analytical:0,creative:0,social:0,physical:0} };
+let lbTab = 'global';
+
+/* ══════════════════════════════════════════════════════════
+   API HELPERS
+══════════════════════════════════════════════════════════ */
+function authHdrs(){
+  const h = {'Content-Type':'application/json'};
+  if(authToken) h['Authorization'] = 'Bearer '+authToken;
+  return h;
+}
+
+async function api(path, opts={}){
+  showLoad(true);
+  try {
+    const res  = await fetch(API_BASE+path, { headers:authHdrs(), ...opts });
+    const data = await res.json();
+    showLoad(false);
+    if(!res.ok) throw new Error(data.error || 'HTTP '+res.status);
+    return data;
+  } catch(e) {
+    showLoad(false);
+    if(e.name==='TypeError')
+      toast('Cannot reach server — is Flask running on port 5000?','error');
+    throw e;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   UI HELPERS
+══════════════════════════════════════════════════════════ */
+function showLoad(on, txt='LOADING…'){
+  document.getElementById('loadTxt').textContent = txt;
+  document.getElementById('loadingOverlay').classList.toggle('hidden',!on);
+}
+
+let _toastTimer;
+function toast(msg, type='info'){
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = type; el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(()=>el.classList.remove('show'), 3400);
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+
+  const withBack = ['sections','levels','quiz','result','psychometric','careerResult','leaderboard'];
+  const withNav  = ['sections','leaderboard'];
+  const withUser = ['sections','levels','quiz','result','psychometric','careerResult','leaderboard'];
+
+  document.getElementById('backBtn').style.display = withBack.includes(id) ? 'block' : 'none';
+  document.getElementById('navBar').classList.toggle('show', withNav.includes(id));
+  document.getElementById('userBar').classList.toggle('show', withUser.includes(id));
+  document.getElementById('navPlay').classList.toggle('active', id==='sections');
+  document.getElementById('navLb').classList.toggle('active',   id==='leaderboard');
+}
+
+document.getElementById('backBtn').addEventListener('click', ()=>{
+  clearInterval(Q.timer);
+  const cur = document.querySelector('.screen:not(.hidden)')?.id;
+  const map = {
+    result:'levels', quiz:'levels', levels:'sections',
+    careerResult:'sections', psychometric:'sections', leaderboard:'sections'
+  };
+  if(map[cur]) showScreen(map[cur]);
+});
+
+function navGo(id){
+  clearInterval(Q.timer);
+  if(id==='leaderboard') renderLeaderboard();
+  else showScreen(id);
+}
+
+/* ══════════════════════════════════════════════════════════
+   AUTH
+══════════════════════════════════════════════════════════ */
+function switchTab(tab){
+  const isL = tab==='login';
+  document.getElementById('loginForm').style.display    = isL ? '' : 'none';
+  document.getElementById('registerForm').style.display = isL ? 'none' : '';
+  document.getElementById('tabLogin').classList.toggle('active', isL);
+  document.getElementById('tabRegister').classList.toggle('active', !isL);
+}
+
+async function doLogin(){
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  if(!username||!password){ toast('Enter username and password','error'); return; }
+  try {
+    const d = await api('/auth/login',{method:'POST',body:JSON.stringify({username,password})});
+    authToken = d.token; currentUser = d.user;
+    localStorage.setItem('bb_token', authToken);
+    await afterAuth();
+  } catch(e){ toast(e.message,'error'); }
+}
+
+async function doRegister(){
+  const username = document.getElementById('regUser').value.trim();
+  const email    = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPass').value;
+  if(!username||!password){ toast('Username and password required','error'); return; }
+  if(password.length<4)   { toast('Password must be at least 4 characters','error'); return; }
+  try {
+    const d = await api('/auth/register',{method:'POST',body:JSON.stringify({username,email:email||null,password})});
+    authToken = d.token; currentUser = d.user;
+    localStorage.setItem('bb_token', authToken);
+    await afterAuth();
+  } catch(e){ toast(e.message,'error'); }
+}
+
+async function doLogout(){
+  try{ await api('/auth/logout',{method:'POST'}); } catch(_){}
+  authToken=''; currentUser=null;
+  localStorage.removeItem('bb_token');
+  clearInterval(Q.timer);
+  document.getElementById('navBar').classList.remove('show');
+  document.getElementById('userBar').classList.remove('show');
+  toast('Logged out','info');
+  showScreen('login');
+}
+
+async function afterAuth(){
+  document.getElementById('welcomeText').textContent = `WELCOME, ${currentUser.username.toUpperCase()}`;
+  document.getElementById('userPill').textContent    = `👤 ${currentUser.username.toUpperCase()}`;
+  await loadSectionsAndProgress();
+  showScreen('sections');
+  toast(`Welcome, ${currentUser.username}! 🧠`,'success');
+}
+
+// Enter key shortcuts
+['loginPass','loginUser'].forEach(id=>{
+  document.getElementById(id).addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+});
+document.getElementById('regPass').addEventListener('keydown',e=>{ if(e.key==='Enter') doRegister(); });
+
+/* ══════════════════════════════════════════════════════════
+   SECTIONS + PROGRESS
+══════════════════════════════════════════════════════════ */
+async function loadSectionsAndProgress(){
+  const [sd, pd] = await Promise.all([
+    api('/sections/'),
+    api('/quiz/progress').catch(()=>({progress:[]}))
+  ]);
+  sectionsData = sd.sections;
+  progressMap  = {};
+  pd.progress.forEach(p=>{ progressMap[p.level_id] = p; });
+  renderSections();
+}
+
+function renderSections(){
+  const grid = document.getElementById('sectionsGrid');
+
+  const cards = sectionsData.map(s => {
+    // Count completed levels for badge
+    const lvls = s.levels || [];
+    const done = lvls.filter(lv => progressMap[lv.id]?.is_perfect).length;
+    const badge = done > 0 ? `<span style="color:var(--gold);font-size:.7rem;letter-spacing:1px">${done}/5 ★</span>` : '';
+
+    const imgHTML = s.image_url
+      ? `<img src="${API_BASE}${s.image_url.replace('/api','')}" alt="${s.name}"
+              onerror="this.parentElement.innerHTML='<span class=sec-icon>${s.icon||'📚'}</span>'" />`
+      : `<span class="sec-icon">${s.icon||'📚'}</span>
+         <span class="sec-label">${s.name}</span>`;
+
+    return `<div class="section-card" onclick="selectSection(${s.id},'${escQ(s.name)}','${s.icon||'📚'}')">
+      <div class="sec-img">${imgHTML}</div>
+      <h3>${s.name}</h3>
+      <p>${s.description||''}</p>
+      <span class="sec-info">5 Levels · 10 Questions ${badge}</span>
+    </div>`;
+  }).join('');
+
+  const psychoCard = `
+    <div class="section-card psycho-card" onclick="startPsychometric()">
+      <div class="sec-img" style="background:rgba(168,85,247,.07);border-color:rgba(168,85,247,.3)">
+        <span style="font-size:2.6rem">🧬</span>
+        <span class="sec-label" style="color:#a855f7">CAREER DISCOVERY</span>
+      </div>
+      <h3>PSYCHOMETRIC TEST</h3>
+      <p>Discover your ideal career path through personality analysis</p>
+      <span class="sec-info" style="color:#a855f7">20 Questions · No Timer · AI Analysis</span>
+    </div>`;
+
+  grid.innerHTML = cards + psychoCard;
+}
+
+function showSections(){
+  clearInterval(Q.timer);
+  loadSectionsAndProgress().then(()=>showScreen('sections'));
+}
+
+function escQ(s){ return s.replace(/'/g,"\\'"); }
+
+/* ══════════════════════════════════════════════════════════
+   LEVELS
+══════════════════════════════════════════════════════════ */
+function selectSection(id, name, icon){
+  Q.sectionId   = id;
+  Q.sectionName = name;
+  Q.sectionIcon = icon;
+  document.getElementById('levelsTitle').textContent = `${icon} ${name} — SELECT LEVEL`;
+  renderLevels();
+  showScreen('levels');
+}
+
+function renderLevels(){
+  const sec   = sectionsData.find(s=>s.id===Q.sectionId);
+  const levels= (sec?.levels||[]).slice().sort((a,b)=>a.level_number-b.level_number);
+  const NAMES = {1:'Beginner',2:'Easy',3:'Medium',4:'Hard',5:'Expert'};
+
+  document.getElementById('levelsContainer').innerHTML = levels.map(lv=>{
+    const prog      = progressMap[lv.id];
+    const isPerfect = prog?.is_perfect || false;
+    const bestStars = prog?.best_stars  || 0;
+
+    const unlocked = lv.level_number===1
+      ? true
+      : (()=>{
+          const prev = levels.find(l=>l.level_number===lv.level_number-1);
+          return progressMap[prev?.id]?.is_perfect || false;
+        })();
+
+    if(!unlocked) return `
+      <div class="level-btn locked">
+        <div class="lv-num">🔒</div>
+        <div class="lv-info">
+          <h4>Level ${lv.level_number}</h4>
+          <p>Score 10/10 on Level ${lv.level_number-1} to unlock</p>
+        </div>
+        <span style="margin-left:auto;font-size:1.1rem">🔐</span>
+      </div>`;
+
+    const stars = isPerfect ? '★★★★★' : '★'.repeat(bestStars)+'☆'.repeat(5-bestStars);
+    return `
+      <div class="level-btn ${isPerfect?'completed':''}" onclick="startLevel(${lv.id},${lv.level_number})">
+        <div class="lv-num">${isPerfect ? '✅' : 'L'+lv.level_number}</div>
+        <div class="lv-info">
+          <h4>Level ${lv.level_number} — ${NAMES[lv.level_number]||''}</h4>
+          <p>${isPerfect ? 'Completed! Play again anytime' : 'Score 10/10 to unlock the next level'}</p>
+        </div>
+        <div class="lv-stars">${stars}</div>
+      </div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════
+   QUIZ — START
+══════════════════════════════════════════════════════════ */
+async function startLevel(levelId, levelNum){
+  Q.levelId   = levelId;
+  Q.levelNum  = levelNum;
+  Q.answers   = [];
+  Q.idx       = 0;
+  Q.score     = 0;
+  Q.answered  = false;
+  Q.quizStart = Date.now();
+
+  try {
+    showLoad(true,'LOADING QUESTIONS…');
+    const data = await api(`/questions/level/${levelId}`);
+    // Server returns questions WITHOUT correct_option
+    // We store them and collect answers client-side,
+    // then submit all at once — server validates and returns correct_map
+    Q.questions = data.questions;
+    showScreen('quiz');
+    renderQuestion();
+  } catch(e){ toast('Could not load questions: '+e.message,'error'); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   QUIZ — RENDER QUESTION
+══════════════════════════════════════════════════════════ */
+function renderQuestion(){
+  const q = Q.questions[Q.idx];
+
+  document.getElementById('quizMeta').innerHTML =
+    `<span>${Q.sectionName.toUpperCase()}</span> · LV ${Q.levelNum} · `+
+    `<span style="color:var(--gold)">${Q.score}/${Q.idx}</span>`;
+
+  document.getElementById('questionNum').textContent  = `QUESTION ${Q.idx+1} OF ${Q.questions.length}`;
+  document.getElementById('questionText').textContent = q.question_text;
+  document.getElementById('progressFill').style.width = `${(Q.idx/Q.questions.length)*100}%`;
+
+  document.getElementById('optionsGrid').innerHTML = q.options.map((opt,i)=>`
+    <button class="option-btn" id="opt${i}" onclick="selectAnswer(${i})">
+      <span class="opt-letter">${String.fromCharCode(65+i)}</span>
+      <span>${opt}</span>
+    </button>`).join('');
+
+  const fb = document.getElementById('feedbackMsg');
+  fb.style.display = 'none'; fb.className = 'feedback-msg';
+
+  Q.answered = false;
+  Q.qStart   = Date.now();
+  startTimer();
+}
+
+/* ══════════════════════════════════════════════════════════
+   TIMER
+══════════════════════════════════════════════════════════ */
+function startTimer(){
+  clearInterval(Q.timer);
+  Q.timerVal = 15;
+  updateTimer();
+  Q.timer = setInterval(()=>{
+    Q.timerVal--;
+    updateTimer();
+    if(Q.timerVal <= 0){ clearInterval(Q.timer); if(!Q.answered) timeUp(); }
+  },1000);
+}
+
+function updateTimer(){
+  const c = document.getElementById('timerCircle');
+  const n = document.getElementById('timerNum');
+  c.style.strokeDashoffset = 188.5 * (1 - Q.timerVal/15);
+  const urgent = Q.timerVal <= 5;
+  c.style.stroke = urgent ? '#ff3355' : '#00e5ff';
+  n.style.color  = urgent ? '#ff3355' : '#00e5ff';
+  n.textContent  = Q.timerVal;
+}
+
+function timeUp(){
+  if(Q.answered) return;
+  Q.answered = true;
+  document.querySelectorAll('.option-btn').forEach(b=>b.disabled=true);
+  Q.answers.push({ question_id:Q.questions[Q.idx].id, selected_option:null, time_taken:15 });
+  showFeedback('neu',"⏰ Time's up!");
+  setTimeout(advanceQuestion, 1800);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SELECT ANSWER  — highlight immediately, collect, advance
+══════════════════════════════════════════════════════════ */
+function selectAnswer(index){
+  if(Q.answered) return;
+  Q.answered = true;
+  clearInterval(Q.timer);
+
+  const timeTaken = Math.min(15, Math.round((Date.now()-Q.qStart)/1000));
+  document.querySelectorAll('.option-btn').forEach(b=>b.disabled=true);
+
+  // Highlight chosen button in neutral blue while we wait
+  document.getElementById('opt'+index).classList.add('selected-neutral');
+
+  Q.answers.push({
+    question_id: Q.questions[Q.idx].id,
+    selected_option: index,
+    time_taken: timeTaken
+  });
+
+  showFeedback('neu','✔ Answer recorded…');
+  setTimeout(advanceQuestion, 900);
+}
+
+function showFeedback(cls, msg){
+  const el = document.getElementById('feedbackMsg');
+  el.textContent = msg;
+  el.className   = 'feedback-msg ' + cls;
+  el.style.display = 'block';
+}
+
+function advanceQuestion(){
+  Q.idx++;
+  if(Q.idx >= Q.questions.length) submitQuiz();
+  else renderQuestion();
+}
+
+/* ══════════════════════════════════════════════════════════
+   SUBMIT — server validates ALL answers at once
+   Returns: score, stars, is_perfect, correct_map{qId:{is_correct,correct_option}}
+══════════════════════════════════════════════════════════ */
+async function submitQuiz(){
+  const totalTime = Math.round((Date.now()-Q.quizStart)/1000);
+  try {
+    showLoad(true,'CALCULATING RESULT…');
+    const result = await api('/quiz/submit',{
+      method:'POST',
+      body: JSON.stringify({
+        level_id:   Q.levelId,
+        time_taken: totalTime,
+        answers:    Q.answers
+      })
+    });
+    // Refresh progress map
+    const prog = await api('/quiz/progress').catch(()=>({progress:[]}));
+    progressMap = {};
+    prog.progress.forEach(p=>{ progressMap[p.level_id]=p; });
+
+    showResult(result);
+  } catch(e){
+    toast('Submit error: '+e.message,'error');
+    showScreen('levels');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   RESULT SCREEN
+══════════════════════════════════════════════════════════ */
+function showResult(data){
+  const { score, stars, is_perfect, correct_map } = data;
+  const level = Q.levelNum;
+  const inner = document.getElementById('resultInner');
+
+  // Build per-question review using correct_map from server
+  const reviewHTML = Q.answers.map((a,i)=>{
+    const info = correct_map?.[a.question_id];
+    const isCorrect = info?.is_correct;
+    const timedOut  = a.selected_option === null;
+    const cls   = timedOut ? 'rv-timeout' : isCorrect ? 'rv-correct' : 'rv-wrong';
+    const dot   = timedOut ? '⏰' : isCorrect ? '✅' : '❌';
+    return `<div class="review-item ${cls}">
+      <span class="rv-dot">${dot}</span>
+      <span>Q${i+1}: ${timedOut?'Timed out':isCorrect?'Correct':'Wrong'}</span>
+    </div>`;
+  }).join('');
+
+  if(is_perfect){
+    inner.innerHTML = `
+      <div style="font-size:3rem;letter-spacing:8px;animation:pulse-logo 1.5s ease-in-out infinite">★★★★★</div>
+      <div class="score-big">10/10</div>
+      <div class="score-label">PERFECT SCORE!</div>
+      <div class="perfect-box">
+        <h3>🎉 LEVEL ${level} COMPLETE!</h3>
+        <p>${level<5
+          ? `🔓 <strong>Level ${level+1} is now unlocked!</strong><br>You proved your mastery — keep climbing!`
+          : '🏆 You mastered ALL 5 levels!<br>You are a true Brain Boost Champion!'}</p>
+      </div>
+      <div class="review-grid">${reviewHTML}</div>
+      <div class="result-actions">
+        ${level<5 ? `<button class="btn" onclick="goNextLevel()">NEXT LEVEL →</button>` : ''}
+        <button class="btn secondary" onclick="retryLevel()">PLAY AGAIN</button>
+        <button class="btn secondary" onclick="showSections()">MAIN MENU</button>
+      </div>`;
+  } else {
+    const msg = score>=8 ? '🌟 So close! Just need 10/10 to unlock the next level.'
+              : score>=5 ? '👍 Good effort! Study more and try again for 10/10.'
+              :             '📚 Keep practising! Review topics and go again.';
+    const starStr = '★'.repeat(stars)+'☆'.repeat(5-stars);
+    inner.innerHTML = `
+      <div style="font-size:3rem;letter-spacing:8px">${starStr}</div>
+      <div class="score-big">${score}/10</div>
+      <div class="score-label">OUT OF 10 QUESTIONS</div>
+      <div class="try-again-box">
+        <h3>⚠️ LEVEL NOT CLEARED</h3>
+        <p>${msg}<br><br>You need <strong>10 out of 10</strong> to unlock Level ${level+1}.</p>
+      </div>
+      <div class="review-grid">${reviewHTML}</div>
+      <div class="result-actions">
+        <button class="btn danger"     onclick="retryLevel()">🔄 TRY AGAIN</button>
+        <button class="btn secondary"  onclick="showSections()">MAIN MENU</button>
+      </div>`;
+  }
+
+  showScreen('result');
+}
+
+function retryLevel(){ startLevel(Q.levelId, Q.levelNum); }
+
+function goNextLevel(){
+  renderLevels(); showScreen('levels');
+  setTimeout(()=>{
+    const sec   = sectionsData.find(s=>s.id===Q.sectionId);
+    const nextLv= (sec?.levels||[]).find(l=>l.level_number===Q.levelNum+1);
+    if(nextLv) startLevel(nextLv.id, nextLv.level_number);
+  }, 300);
+}
+
+/* ══════════════════════════════════════════════════════════
+   PSYCHOMETRIC TEST
+══════════════════════════════════════════════════════════ */
+function startPsychometric(){
+  PS.idx    = 0;
+  PS.scores = {analytical:0,creative:0,social:0,physical:0};
+  showScreen('psychometric');
+  renderPsychoQ();
+}
+
+function renderPsychoQ(){
+  const q   = PSYCHO_QS[PS.idx];
+  const pct = (PS.idx / PSYCHO_QS.length) * 100;
+  document.getElementById('psychoLabel').textContent    = `QUESTION ${PS.idx+1} OF ${PSYCHO_QS.length}`;
+  document.getElementById('psychoFill').style.width     = pct+'%';
+  document.getElementById('psychoQuestion').textContent = q.q;
+
+  const traits  = ['analytical','creative','social','physical'];
+  document.getElementById('psychoOptions').innerHTML = q.o.map((opt,i)=>`
+    <button class="psycho-opt" onclick="pickPsycho(${i})">
+      <span class="psycho-letter">${String.fromCharCode(65+i)}</span>
+      <span>${opt}</span>
+    </button>`).join('');
+}
+
+function pickPsycho(idx){
+  document.querySelectorAll('.psycho-opt').forEach((b,i)=>{
+    b.disabled = true;
+    if(i===idx) b.classList.add('selected');
+  });
+  const traits = ['analytical','creative','social','physical'];
+  PS.scores[traits[idx]]++;
+  setTimeout(()=>{
+    PS.idx++;
+    if(PS.idx >= PSYCHO_QS.length) submitPsycho();
+    else renderPsychoQ();
+  }, 480);
+}
+
+async function submitPsycho(){
+  try {
+    showLoad(true,'ANALYSING YOUR PERSONALITY…');
+    const data = await api('/psychometric/submit',{
+      method:'POST', body:JSON.stringify(PS.scores)
+    });
+    renderCareerResult(data);
+  } catch(e){
+    toast('Could not save result, showing locally','info');
+    const dom = Object.keys(PS.scores).reduce((a,b)=>PS.scores[a]>=PS.scores[b]?a:b);
+    renderCareerResult({ dominant:dom, scores:PS.scores, profile:null });
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   CAREER RESULT
+══════════════════════════════════════════════════════════ */
+function renderCareerResult(data){
+  const { dominant, scores, profile } = data;
+  const prof = profile || CAREER_PROFILES[dominant];
+  const sc   = scores  || PS.scores;
+  const total= PSYCHO_QS.length;
+
+  const COLORS = {analytical:'#00e5ff', creative:'#a855f7', social:'#00ff88', physical:'#ffd700'};
+  const LABELS = {analytical:'Analytical', creative:'Creative', social:'Social', physical:'Physical'};
+
+  const breakdown = Object.entries(sc).map(([trait,val])=>{
+    const pct = Math.round((val/total)*100);
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="width:88px;font-size:.73rem;color:var(--muted);text-align:right;letter-spacing:1px">${LABELS[trait]}</div>
+      <div style="flex:1;height:8px;background:rgba(255,255,255,.05);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${COLORS[trait]};border-radius:4px;transition:width 1s ease"></div>
+      </div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:.73rem;color:${COLORS[trait]};min-width:34px">${pct}%</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('careerCard').innerHTML = `
+    <div class="career-badge">${prof.badge}</div>
+    <div class="career-title">${prof.title}</div>
+    <div class="career-type">${prof.type}</div>
+    <div class="career-desc">${prof.desc}</div>
+
+    <div class="c-divider"></div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:.7rem;color:var(--muted);letter-spacing:3px;margin-bottom:14px">PERSONALITY BREAKDOWN</div>
+    <div style="width:100%;max-width:400px;margin:0 auto 20px">${breakdown}</div>
+
+    <div class="c-divider"></div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:.7rem;color:var(--muted);letter-spacing:3px;margin-bottom:14px">YOUR CORE STRENGTHS</div>
+    <div class="career-strengths">${prof.strengths.map(s=>`<span class="strength-tag">${s}</span>`).join('')}</div>
+
+    <div class="c-divider"></div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:.7rem;color:var(--muted);letter-spacing:3px;margin-bottom:14px">RECOMMENDED CAREER PATHS</div>
+    <div class="career-paths">${prof.paths.map(p=>`<span class="career-path-tag">${p}</span>`).join('')}</div>
+
+    <div class="c-divider"></div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:.7rem;color:var(--muted);letter-spacing:3px;margin-bottom:10px">RECOMMENDED BRAIN BOOST SECTIONS</div>
+    <div class="career-sec-hint">Focus on these sections to strengthen your career profile:</div>
+    <div class="rec-sections">${prof.recommended.map(r=>`<span class="rec-sec-tag">⭐ ${r}</span>`).join('')}</div>
+
+    <div class="career-actions">
+      <button class="btn psycho"    onclick="startPsychometric()">RETAKE TEST</button>
+      <button class="btn secondary" onclick="showSections()">EXPLORE SECTIONS</button>
+    </div>`;
+
+  showScreen('careerResult');
+}
+
+/* ══════════════════════════════════════════════════════════
+   LEADERBOARD
+══════════════════════════════════════════════════════════ */
+async function renderLeaderboard(){
+  showScreen('leaderboard');
+
+  // Build tabs: Global + each section
+  const tabs = [
+    {id:'global', label:'🌐 Global'},
+    ...sectionsData.map(s=>({id:'s_'+s.id, label:(s.icon||'📚')+' '+s.name}))
+  ];
+  document.getElementById('lbTabs').innerHTML = tabs.map(t=>`
+    <button class="lb-tab ${lbTab===t.id?'active':''}" onclick="switchLbTab('${t.id}')">
+      ${t.label}
+    </button>`).join('');
+
+  try {
+    let data;
+    if(lbTab==='global'){
+      data = await api('/leaderboard/global');
+      fillLbTable(data.leaderboard, 'global');
+    } else {
+      const sid = lbTab.replace('s_','');
+      data = await api(`/leaderboard/section/${sid}`);
+      fillLbTable(data.leaderboard, 'section');
+    }
+  } catch(e){ toast('Could not load leaderboard','error'); }
+}
+
+function switchLbTab(tab){ lbTab=tab; renderLeaderboard(); }
+
+function fillLbTable(rows, type){
+  const me = currentUser?.username?.toLowerCase();
+  document.getElementById('lbBody').innerHTML = rows.map(r=>{
+    const rankCls = r.rank===1?'r1':r.rank===2?'r2':r.rank===3?'r3':'';
+    const medal   = r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':r.rank;
+    const isMine  = r.username?.toLowerCase()===me;
+    const score   = type==='global' ? r.total_score : r.section_score;
+    const perfects= type==='global' ? r.perfect_count : r.perfects;
+    const games   = type==='global' ? (r.games_played||'—') : '—';
+    return `<tr ${isMine?'class="lb-me"':''}>
+      <td class="lb-rank ${rankCls}">${medal}</td>
+      <td style="font-weight:600">${r.username}${isMine?' <span style="color:var(--accent);font-size:.7rem">◀ YOU</span>':''}</td>
+      <td style="font-family:'Orbitron',sans-serif;color:var(--accent);font-size:.83rem">${score}</td>
+      <td style="color:var(--correct);font-size:.83rem">${perfects}</td>
+      <td style="color:var(--muted);font-size:.78rem">${games}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px;font-size:.85rem">
+    No scores yet — be the first to play! 🎮
+  </td></tr>`;
+}
+
+/* ══════════════════════════════════════════════════════════
+   BOOT  — restore session from stored JWT token
+══════════════════════════════════════════════════════════ */
+async function boot(){
+  await new Promise(r=>setTimeout(r, 2400)); // show splash
+
+  if(authToken){
+    try {
+      showLoad(true,'RESTORING SESSION…');
+      const d = await api('/auth/me');
+      currentUser = d.user;
+      document.getElementById('welcomeText').textContent = `WELCOME BACK, ${currentUser.username.toUpperCase()}`;
+      document.getElementById('userPill').textContent    = `👤 ${currentUser.username.toUpperCase()}`;
+      await loadSectionsAndProgress();
+      showScreen('sections');
+      return;
+    } catch(_){
+      authToken = '';
+      localStorage.removeItem('bb_token');
+    }
+  }
+  showScreen('login');
+}
+
+boot();
+</script>
+</body>
+</html>
