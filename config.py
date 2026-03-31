@@ -3,12 +3,11 @@ from datetime import timedelta
 from urllib.parse import quote_plus
 
 class Config:
-    MYSQL_HOST     = os.getenv('MYSQLHOST',     'tramway.proxy.rlwy.net')
-    MYSQL_PORT     = int(os.getenv('MYSQLPORT', 53271))
-    MYSQL_USER     = os.getenv('MYSQLUSER',     'root')
-    MYSQL_PASSWORD = os.getenv('MYSQLPASSWORD', 'wTNPRIMnjMCDjIrMOqwauYokOAvQryth')
-    MYSQL_DATABASE = os.getenv('MYSQLDATABASE', 'railway')
-
+    MYSQL_HOST     = os.getenv('MYSQLHOST',     'ud6gv3.h.filess.io')
+    MYSQL_PORT     = int(os.getenv('MYSQLPORT', 61002))
+    MYSQL_USER     = os.getenv('MYSQLUSER',     'Brainboost_runeventto')
+    MYSQL_PASSWORD = os.getenv('MYSQLPASSWORD', 'e6d943bcd85339a3c0e49ba6bbbfa1ef9f881310')
+    MYSQL_DATABASE = os.getenv('MYSQLDATABASE', 'Brainboost_runeventto')
     SQLALCHEMY_DATABASE_URI = (
         f"mysql+pymysql://{MYSQL_USER}:{quote_plus(MYSQL_PASSWORD)}"
         f"@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}"
