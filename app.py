@@ -29,12 +29,8 @@ def create_app():
 
     # ── Serve frontend HTML at root ──────────────────────────
     @app.route('/')
-    def index():
-        html = os.path.join(os.path.dirname(__file__), 'brain-boost-v2-connected.html')
-        if os.path.exists(html):
-            return send_from_directory(os.path.dirname(__file__), 'index.html')
-        return '<h2 style="font-family:sans-serif;padding:40px">Place brain-boost-v2-connected.html in the brainboost_v2/ folder, then refresh.</h2>', 404
-
+   def index():
+    return send_from_directory(os.path.dirname(__file__), 'index.html')
     # ── Create tables + auto-seed on first run ───────────────
     with app.app_context():
         db.create_all()
