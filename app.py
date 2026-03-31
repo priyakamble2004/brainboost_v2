@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 load_dotenv()
-
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 from database import db
@@ -15,7 +14,6 @@ import config, os
 def create_app():
     app = Flask(__name__, static_folder='static')
     app.config.from_object(config.Config)
-
     db.init_app(app)
     CORS(app, resources={r"/api/*": {"origins": "*"}})
 
@@ -28,9 +26,11 @@ def create_app():
     app.register_blueprint(leaderboard_bp, url_prefix='/api/leaderboard')
 
     # ── Serve frontend HTML at root ──────────────────────────
+    
     @app.route('/')
-   def index():
-    return send_from_directory(os.path.dirname(__file__), 'index.html')
+    def index():
+        return send_from_directory(os.path.dirname(__file__), 'index.html')
+
     # ── Create tables + auto-seed on first run ───────────────
     with app.app_context():
         db.create_all()
@@ -38,7 +38,6 @@ def create_app():
         seed_all()
 
     return app
-
 
 if __name__ == '__main__':
     app = create_app()
