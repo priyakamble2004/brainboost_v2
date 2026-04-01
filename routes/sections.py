@@ -29,14 +29,13 @@ def get_section(section_id):
 
 @sections_bp.route('/<int:section_id>/image', methods=['GET'])
 def get_image(section_id):
-    """GET /api/sections/<id>/image  →  image file"""
+    """GET /api/sections/<id>/image → image file"""
     s = Section.query.get_or_404(section_id)
     if not s.image_path:
         return jsonify({'error': 'No image uploaded for this section'}), 404
-    folder   = current_app.config['UPLOAD_FOLDER']
+    folder   = os.path.join(current_app.root_path, 'static', 'images')
     filename = os.path.basename(s.image_path)
     return send_from_directory(folder, filename)
-
 
 @sections_bp.route('/<int:section_id>/image', methods=['POST'])
 @token_required
