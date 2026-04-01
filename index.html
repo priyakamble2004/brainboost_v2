@@ -1001,9 +1001,9 @@ function renderSections(){
     const done = lvls.filter(lv => progressMap[lv.id]?.is_perfect).length;
     const badge = done > 0 ? `<span style="color:var(--gold);font-size:.7rem;letter-spacing:1px">${done}/5 ★</span>` : '';
 
-    const imgHTML = s.image_url
-      ? `<img src="${API_BASE}${s.image_url.replace('/api','')}" alt="${s.name}"
-              onerror="this.parentElement.innerHTML='<span class=sec-icon>${s.icon||'📚'}</span>'" />`
+   const imgHTML = s.image_path
+  ? `<img src="${API_BASE}${s.image_path}" alt="${s.name}"
+ onerror="this.parentElement.innerHTML='<span class=sec-icon>${s.icon||'📚'}</span>'" />`
       : `<span class="sec-icon">${s.icon||'📚'}</span>
          <span class="sec-label">${s.name}</span>`;
 
