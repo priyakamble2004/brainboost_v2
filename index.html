@@ -1002,7 +1002,7 @@ function renderSections(){
     const badge = done > 0 ? `<span style="color:var(--gold);font-size:.7rem;letter-spacing:1px">${done}/5 ★</span>` : '';
 
    const imgHTML = s.image_path
-  ? `<img src="${API_BASE}${s.image_path}" alt="${s.name}"
+  ? `<img src="https://brainboost-v2.onrender.com${s.image_path}" alt="${s.name}"
  onerror="this.parentElement.innerHTML='<span class=sec-icon>${s.icon||'📚'}</span>'" />`
       : `<span class="sec-icon">${s.icon||'📚'}</span>
          <span class="sec-label">${s.name}</span>`;
