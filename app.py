@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 load_dotenv()
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request, jsonify
 from flask_cors import CORS
 from database import db
 from routes.auth import auth_bp
@@ -37,8 +37,27 @@ def create_app():
         from seed import seed_all
         seed_all()
 
+    # ── JSON error handlers for /api/* so the frontend never gets HTML back ──
+    @app.errorhandler(404)
+    def not_found(e):
+        if request.path.startswith('/api/'):
+            return jsonify(error='Not found', path=request.path), 404
+        return e
+
+    @app.errorhandler(500)
+    def server_error(e):
+        if request.path.startswith('/api/'):
+            return jsonify(error='Internal server error'), 500
+        return e
+
     return app
 
+# Module-level app object — REQUIRED for gunicorn/production WSGI servers.
+# Render's start command (e.g. `gunicorn app:app`) imports this module and
+# looks for `app` at import time; without this line it can't find your app
+# at all, and every request falls back to Render's own HTML error page.
+app = create_app()
+
 if __name__ == '__main__':
-    app = create_app()
+    # Only used for local development (python app.py).
     app.run(debug=True, host='0.0.0.0', port=5000)
